@@ -1,7 +1,33 @@
 import streamlit as st
+from openai import OpenAI
+from dotenv import dotenv_values
 
+env = dotenv_values(".env")
 
-st.title(":parrot: Papuga!")
+openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
+
+st.title(":black_joker: NaszGPT z OpenAI")
+
+def get_chatbot_reply(user_prompt: str):
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": """"
+                Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
+                    Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
+                """
+            },
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    return {
+        "role": "assistant",
+        "content": response.choices[0].message.content,
+    }
+
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
@@ -22,9 +48,9 @@ if prompt:
     })
 
     # wyświetlenie odpowiedzi AI
-    with st.chat_message("ai"):
-        response = f"Papuga mówi {prompt}"
-        st.markdown(response)
+    with st.chat_message("assistant"):
+        chatbot_message = get_chatbot_reply(prompt)
+        st.markdown(chatbot_message["content"])
 
-    st.session_state["messages"].append({"role": "ai", "content": response})
+    st.session_state["messages"].append(chatbot_message)
     
