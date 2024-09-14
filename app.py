@@ -2,18 +2,33 @@ import streamlit as st
 from openai import OpenAI
 from dotenv import dotenv_values
 
+model_pricings = {
+    "gpt-4o":{
+        "input_tokens": 5.00 / 1_000_000, #per token
+        "output_tokens": 15.00 / 1_000_000, #per token
+    },
+    "gpt-40-mini":{
+        "input_tokens": 0.150 / 1_000_000, #per token
+        "output_tokens": 0.600 / 1_000_000, # per token
+    }
+}
+MODEL = "gpt-40-mini"
+USD_TO_PLN = 3.97
+PRICING = model_pricings[MODEL]
+
+
 env = dotenv_values(".env")
 
 openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-st.title(":brain: NaszGPT z pamięcią")
+st.title(":moneybag: NaszGPT liczy koszty")
 
 def get_chatbot_reply(user_prompt, memory):
-    # system messages
+    # dodaj system messages
     messages=[
         {
             "role": "system",
-            "content": """"
+            "content": """
             Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
                 Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
             """
@@ -30,13 +45,24 @@ def get_chatbot_reply(user_prompt, memory):
     messages.append({"role": "user", "content": user_prompt})
 
     response = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model=MODEL,
         messages=messages
     )  
+    usage = {}
+    if response.usage:
+        usage = {
+            # INPUT
+            "prompt_tokens": response.usage.prompt_tokens,
+            # OUTPUT
+            "completion_tokens": response.usage.completion_tokens,
+            # INPUT + OUTPUT
+            "total_tokens": response.usage.total_tokens,
+        }
 
     return {
         "role": "assistant",
         "content": response.choices[0].message.content,
+        "usage": usage,
     }
 
 
@@ -70,5 +96,17 @@ if prompt:
     
 
 with st.sidebar:
-    with st.expander("Historia rozmowy"):
-        st.json(st.session_state.get("messages" or []))
+    st.write("Aktualny model", MODEL)
+
+    total_cost = 0
+    for message in st.session_state["messages"]:
+        if "usage" in message:
+            total_cost += message["usage"]["prompt_tokens"] * PRICING["input_tokens"]
+            total_cost += message["usage"]["completion_tokens"] * PRICING["output_tokens"]
+
+    c0, c1 = st.columns(2)
+    with c0:
+        st.metric("Koszt rozmowy (USD)", f"${total_cost:.4f}")
+
+    with c1:
+        st.metric("Koszt rozmowy (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
