@@ -2,38 +2,34 @@ import streamlit as st
 from openai import OpenAI
 from dotenv import dotenv_values
 
+
 model_pricings = {
     "gpt-4o":{
         "input_tokens": 5.00 / 1_000_000, #per token
         "output_tokens": 15.00 / 1_000_000, #per token
     },
-    "gpt-40-mini":{
+    "gpt-4o-mini":{
         "input_tokens": 0.150 / 1_000_000, #per token
         "output_tokens": 0.600 / 1_000_000, # per token
     }
 }
-MODEL = "gpt-40-mini"
+MODEL = "gpt-4o-mini"
 USD_TO_PLN = 3.97
 PRICING = model_pricings[MODEL]
-
 
 env = dotenv_values(".env")
 
 openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-st.title(":moneybag: NaszGPT liczy koszty")
+st.title(":jack_o_lantern: NaszGPT ma osobowość")
 
 def get_chatbot_reply(user_prompt, memory):
     # dodaj system messages
     messages=[
         {
             "role": "system",
-            "content": """
-            Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
-                Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
-            """
+            "content": st.session_state["chatbot_personality"],
         },
-        {"role": "user", "content": user_prompt}
     ]
     # Dodawanie wszystkich wiadomości z pamięci
     for message in memory:
@@ -65,7 +61,6 @@ def get_chatbot_reply(user_prompt, memory):
         "usage": usage,
     }
 
-
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
@@ -92,8 +87,11 @@ if prompt:
             )
         st.markdown(chatbot_message["content"])
 
-    st.session_state["messages"].append(chatbot_message)
-    
+    st.session_state["messages"].append({
+        "role": "assistant", 
+        "content": chatbot_message["content"], 
+        "usage": chatbot_message["usage"]
+        })
 
 with st.sidebar:
     st.write("Aktualny model", MODEL)
@@ -110,3 +108,12 @@ with st.sidebar:
 
     with c1:
         st.metric("Koszt rozmowy (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
+
+    st.session_state["chatbot_personality"] = st.text_area(
+        "Opisz osobowość chatbota",
+        max_chars=1000,
+        height=200,
+        value="""
+        Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika. Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
+        """.strip()
+    )
