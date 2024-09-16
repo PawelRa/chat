@@ -1,6 +1,8 @@
 import streamlit as st
 from openai import OpenAI
 from dotenv import dotenv_values
+import json
+from pathlib import Path
 
 
 model_pricings = {
@@ -21,7 +23,7 @@ env = dotenv_values(".env")
 
 openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-st.title(":jack_o_lantern: NaszGPT ma osobowość")
+st.title(":floppy_disk: NaszGPT pamięta rozmowę")
 
 def get_chatbot_reply(user_prompt, memory):
     # dodaj system messages
@@ -62,7 +64,12 @@ def get_chatbot_reply(user_prompt, memory):
     }
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    if Path("current_conversation.json").exists():
+        with open("current_conversation.json", "r") as f:
+            chatbot_conversation = json.loads(f.read())
+
+        st.session_state["messages"] = chatbot_conversation["messages"]
+        st.session_state["chatbot_personality"] = chatbot_conversation["chatbot_personality"]
 
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
@@ -92,10 +99,15 @@ if prompt:
         "content": chatbot_message["content"], 
         "usage": chatbot_message["usage"]
         })
+    
+    with open("current_conversation.json", "w") as f:
+        f.write(json.dumps({
+            "chatbot_personality": st.session_state["chatbot_personality"],
+            "messages": st.session_state["messages"],
+        }))
 
 with st.sidebar:
     st.write("Aktualny model", MODEL)
-
     total_cost = 0
     for message in st.session_state["messages"]:
         if "usage" in message:
