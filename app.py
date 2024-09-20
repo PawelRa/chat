@@ -238,7 +238,7 @@ if prompt:
     st.session_state["messages"].append({"role": "user", "content": prompt})
 
     with st.chat_message("assistant"):
-        response = chatbot_reply(prompt, memory=st.session_state["messages"][-10:])
+        response = chatbot_reply(prompt, memory=st.session_state["messages"][-20:])
         st.markdown(response["content"])
 
     st.session_state["messages"].append({"role": "assistant", "content": response["content"], "usage": response["usage"]})
